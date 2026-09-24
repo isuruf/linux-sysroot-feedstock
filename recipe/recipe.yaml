@@ -1,0 +1,62 @@
+schema_version: 1
+
+context:
+  target_machine: ${{ "x86_64" if target_platform == "linux-64" else "aarch64" if target_platform == "linux-aarch64" else "powerpc64le" if target_platform == "linux-ppc64le" else "riscv64" if target_platform == "linux-riscv64" else "s390x" if target_platform == "linux-s390x" else "unknown" }}
+
+recipe:
+  name: linux-sysroot
+  version: "9999"
+
+outputs:
+  - package:
+      name: sysroot_${{ target_platform }}
+    build:
+      number: 0
+      script:
+        - set -ex
+        - mkdir -p ${PREFIX}/${{ target_machine }}-conda-linux-gnu/sysroot
+        - ln -sf /usr ${PREFIX}/${{ target_machine }}-conda-linux-gnu/sysroot/usr
+        - mkdir -p ${PREFIX}/bin
+        - echo "--sysroot=/" >> ${PREFIX}/bin/${{ target_machine }}-conda-linux-gnu.cfg
+      variant:
+        down_prioritize_variant: 10
+    requirements:
+      run:
+        - __linux
+    tests:
+      - script:
+          # almost-empty sysroot: usr/ is just a symlink to the system /usr
+          - test -L $PREFIX/${{ target_machine }}-conda-linux-gnu/sysroot/usr
+          - test "$(readlink $PREFIX/${{ target_machine }}-conda-linux-gnu/sysroot/usr)" = "/usr"
+    about:
+      homepage: https://github.com/conda-forge/linux-sysroot-feedstock
+      license: LicenseRef-LGPL-2.0-or-later-AND-LGPL-2.0-or-later-WITH-exceptions-AND-GPL-2.0-or-later
+      license_file: LICENSE
+      summary: "(CDT) A sysroot that links to the system's own /usr for glibc and kernel headers"
+      description: |
+        This sysroot does not bundle its own glibc or kernel headers. Instead, its
+        usr/ directory is a symlink to the system's /usr, so it relies on the glibc
+        and kernel headers already installed on the machine building or running the
+        resulting binaries.
+
+  - package:
+      name: system-linux-sysroot
+    build:
+      number: 0
+    requirements:
+      run:
+        - ${{ pin_subpackage("sysroot_" ~ target_platform, exact=True) }}
+    about:
+      homepage: https://github.com/conda-forge/linux-sysroot-feedstock
+      license: LicenseRef-LGPL-2.0-or-later-AND-LGPL-2.0-or-later-WITH-exceptions-AND-GPL-2.0-or-later
+      license_file: LICENSE
+      summary: "Metapackage that installs the sysroot matching the system's platform"
+      description: |
+        Installing this package pulls in sysroot_${{ target_platform }}, the
+        sysroot that links to the system's own /usr for glibc and kernel headers.
+
+extra:
+  recipe-maintainers:
+    - isuruf
+    - scopatz
+    - beckermr
