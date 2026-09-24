@@ -7,6 +7,9 @@ recipe:
   name: linux-sysroot
   version: "9999"
 
+build:
+  number: 0
+
 outputs:
   - package:
       name: sysroot_${{ target_platform }}
@@ -46,6 +49,9 @@ outputs:
     requirements:
       run:
         - ${{ pin_subpackage("sysroot_" ~ target_platform, exact=True) }}
+    tests:
+      - script:
+          - test -L $PREFIX/${{ target_machine }}-conda-linux-gnu/sysroot/usr
     about:
       homepage: https://github.com/conda-forge/linux-sysroot-feedstock
       license: LicenseRef-LGPL-2.0-or-later-AND-LGPL-2.0-or-later-WITH-exceptions-AND-GPL-2.0-or-later
@@ -54,6 +60,12 @@ outputs:
       description: |
         Installing this package pulls in sysroot_${{ target_platform }}, the
         sysroot that links to the system's own /usr for glibc and kernel headers.
+
+about:
+  homepage: https://github.com/conda-forge/linux-sysroot-feedstock
+  license: LicenseRef-LGPL-2.0-or-later-AND-LGPL-2.0-or-later-WITH-exceptions-AND-GPL-2.0-or-later
+  license_file: LICENSE
+  summary: Sysroots that link to the system's own /usr for glibc and kernel headers
 
 extra:
   recipe-maintainers:
