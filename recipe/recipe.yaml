@@ -2,13 +2,14 @@ schema_version: 1
 
 context:
   target_machine: ${{ "x86_64" if target_platform == "linux-64" else "aarch64" if target_platform == "linux-aarch64" else "powerpc64le" if target_platform == "linux-ppc64le" else "riscv64" if target_platform == "linux-riscv64" else "s390x" if target_platform == "linux-s390x" else "unknown" }}
+  triplet: ${{ target_machine ~ "-conda-linux-gnu" }}
 
 recipe:
   name: linux-sysroot
   version: "9999"
 
 build:
-  number: 0
+  number: 1
 
 outputs:
   - package:
@@ -17,10 +18,13 @@ outputs:
       number: 0
       script:
         - set -ex
-        - mkdir -p ${PREFIX}/${{ target_machine }}-conda-linux-gnu/sysroot
-        - ln -sf /usr ${PREFIX}/${{ target_machine }}-conda-linux-gnu/sysroot/usr
         - mkdir -p ${PREFIX}/bin
-        - echo "--sysroot=/" >> ${PREFIX}/bin/${{ target_machine }}-conda-linux-gnu.cfg
+        # sysroot/usr -> /usr is created by the post-link script (and the activate script for pixi)
+        - sed "s/@TARGET@/${{ triplet }}/g" ${RECIPE_DIR}/post-link.sh > ${PREFIX}/bin/.${PKG_NAME}-post-link.sh
+        - sed "s/@TARGET@/${{ triplet }}/g" ${RECIPE_DIR}/pre-unlink.sh > ${PREFIX}/bin/.${PKG_NAME}-pre-unlink.sh
+        - mkdir -p ${PREFIX}/etc/conda/activate.d
+        - sed "s/@TARGET@/${{ triplet }}/g" ${RECIPE_DIR}/activate.sh > ${PREFIX}/etc/conda/activate.d/${PKG_NAME}_activate.sh
+        - echo "--sysroot=/" >> ${PREFIX}/bin/${{ triplet }}.cfg
       variant:
         down_prioritize_variant: 10
     requirements:
@@ -29,8 +33,8 @@ outputs:
     tests:
       - script:
           # almost-empty sysroot: usr/ is just a symlink to the system /usr
-          - test -L $PREFIX/${{ target_machine }}-conda-linux-gnu/sysroot/usr
-          - test "$(readlink $PREFIX/${{ target_machine }}-conda-linux-gnu/sysroot/usr)" = "/usr"
+          - test -L $PREFIX/${{ triplet }}/sysroot/usr
+          - test "$(readlink $PREFIX/${{ triplet }}/sysroot/usr)" = "/usr"
     about:
       homepage: https://github.com/conda-forge/linux-sysroot-feedstock
       license: LicenseRef-LGPL-2.0-or-later-AND-LGPL-2.0-or-later-WITH-exceptions-AND-GPL-2.0-or-later
@@ -42,6 +46,7 @@ outputs:
         and kernel headers already installed on the machine building or running the
         resulting binaries.
 
+
   - package:
       name: system-linux-sysroot
     build:
@@ -51,7 +56,7 @@ outputs:
         - ${{ pin_subpackage("sysroot_" ~ target_platform, exact=True) }}
     tests:
       - script:
-          - test -L $PREFIX/${{ target_machine }}-conda-linux-gnu/sysroot/usr
+          - test -L $PREFIX/${{ triplet }}/sysroot/usr
     about:
       homepage: https://github.com/conda-forge/linux-sysroot-feedstock
       license: LicenseRef-LGPL-2.0-or-later-AND-LGPL-2.0-or-later-WITH-exceptions-AND-GPL-2.0-or-later
